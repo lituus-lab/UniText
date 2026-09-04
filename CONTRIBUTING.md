@@ -8,11 +8,11 @@ Contributions use Apache-2.0 and the Developer Certificate of Origin. Every comm
 Run the complete local gate before review:
 
 ```sh
-nimble testAll
-nimble pyTest
-nimble lint
-nimble checkVGraph
-nimble docs
+build/unigate testAll
+build/unigate pyTest
+build/unigate lint
+build/unigate checkVGraph
+build/unigate docs
 ```
 
 Codec changes require representative success, malformed-input, resource-limit, conversion, and
