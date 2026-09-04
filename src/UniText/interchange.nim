@@ -20,7 +20,12 @@ proc spanToJson(span: SourceSpan): JsonNode =
   }
 
 proc preflightJson(content: string; limits: ParseLimits) =
-  let maximumDepth = min(limits.maxNestingDepth * 2 + 8, 256)
+  # The caller's limit, doubled for the block-object-plus-child-array pair each
+  # level costs, and not capped: a fixed 256 silently refused documents that
+  # satisfied a higher limit, reporting a nesting violation the caller had not
+  # asked for. Nothing here recurses -- the scan is a loop with a counter -- so
+  # a deep document costs iterations, not stack.
+  let maximumDepth = limits.maxNestingDepth * 2 + 8
   let maximumContainers = limits.maxNodes * 2 + 4_096
   var depth = 0
   var containers = 0

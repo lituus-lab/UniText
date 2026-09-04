@@ -40,3 +40,17 @@ suite "Versioned JSON interchange":
     let document = fromInterchangeString(
       """{"schema":"unitext.document","version":2,"metadata":{"literal":"[[[{{{\""},"span":null,"blocks":[]}""")
     check document.metadata["literal"] == "[[[{{{\""
+
+suite "the caller's nesting limit is the limit":
+  test "a document within a raised limit is not refused by a hidden cap":
+    # The preflight capped the effective depth at 256 whatever the caller
+    # asked, so a limit above about 127 levels reported a nesting violation
+    # the caller had not set. Nothing in that scan recurses, so the cap bought
+    # nothing.
+    let parsed = parseDocument("# Title\n\nA paragraph.\n", formatMarkdown)
+    let deep = toInterchangeString(parsed.document)
+    # 200 levels asked for, and the document is far shallower: it must pass.
+    let restored = fromInterchangeString(deep, ParseLimits(
+      maxInputBytes: 1_000_000, maxNestingDepth: 200, maxNodes: 10_000,
+      maxDecodedBytes: 1_000_000))
+    check restored.blocks.len == 2
