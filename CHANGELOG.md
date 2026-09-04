@@ -1,45 +1,24 @@
-<!-- SPDX-License-Identifier: Apache-2.0 -->
-<!-- Copyright 2026 lituus-lab -->
 # Changelog
 
-Notable changes, newest first. Format after
-[Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versions follow
-[Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+All notable changes to UniText are documented in this file.
 
-The C ABI has its own compatibility: a symbol removed or retyped is a major
-change, whatever the Nim API did.
+The format follows Keep a Changelog, and this project follows Semantic Versioning.
 
-## [Unreleased]
+## [0.2.0] - 2026-08-21
 
 ### Added
 
-- `tools/gate.nim`, and a success marker on every task. Nimble 0.22 exits 0
-  when an `exec` inside a task failed, so its exit code proves nothing; the
-  gate reads the marker instead.
-- A `canary` task that must fail, and a CI job that checks it does.
-- An `all-green` job over every other job: one check for branch protection,
-  and a skipped job can no longer pass for a green one.
-- `tests/test_version.nim`, which reads the version out of the manifest, the
-  Nim constant, the C header, the C ABI and the Python packaging, and fails
-  when one drifts.
-- `CODE_OF_CONDUCT.md`, `CITATION.cff`, `.editorconfig`, this file.
+- A bounded neutral document model with stable node identifiers and immutable edits.
+- Markdown, reStructuredText, AsciiDoc, and styled RTF subset codecs.
+- Versioned JSON interchange and machine-readable loss diagnostics.
+- A stable C ABI and a thin Cython-based Python binding.
+- Debug and release tests, executable examples, API documentation, and an executable Book.
+- Three-platform CI and future release workflows matching Uni Family conventions.
+- Opaque immutable AST values, complete parsed-node source spans, and interchange schema version 2.
+- Pinned official/differential corpus gates and deterministic continuous codec mutation fuzzing.
+- Deterministic SPDX source SBOMs plus keyless release signatures and provenance/SBOM attestations.
 
-### Changed
+### Security
 
-- The C ABI takes the once-primitive runtime guard and `raises: []` that every
-  library cloned from here already had.
-- The PyPI distribution becomes `lituus-unitext`; the import name stays
-  `unitext`.
-- Nim minimum 2.0 to 2.2.
-- Every GitHub action is pinned by commit SHA.
-- Coverage below 90% fails, instead of being reported and ignored.
-- Pages deploys only where `PUBLISH_PAGES` is set.
-- The Python binding reads the domain bound from the C header rather than
-  restating it.
-
-### Fixed
-
-- Documentation that the code contradicted: the C prefix, what `--noMain`
-  implies, NimContracts described as optional, a library that does not exist,
-  eight numbered layers nothing defines, the platforms the C ABI is tested on,
-  and a NimContracts branch deleted upstream.
+- Explicit input, nesting, node, and decoded-text limits for untrusted document parsing.
+- Strict Unicode-scalar UTF-8 validation and sanitized self-round-trip fuzz coverage.

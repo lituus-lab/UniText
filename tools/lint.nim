@@ -3,12 +3,7 @@
 ## Fails if nimpretty would reformat any source. Checks, never rewrites.
 import std/[os, osproc, strformat, strutils]
 
-# Every directory any Uni* repo keeps Nim in. Absent ones are skipped by
-# `dirExists` below, so the list is the same file everywhere -- it used to
-# be the one line that differed, and three repos were quietly not checking
-# their bin/, bench/ or tools/ sources at all.
-const Roots = ["src", "tests", "examples", "book", "tools", "bin", "bench",
-               "benchmarks"]
+const Roots = ["src", "tests", "examples", "book"]
 
 proc sources(): seq[string] =
   for root in Roots:

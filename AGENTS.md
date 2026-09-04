@@ -54,5 +54,7 @@ coverage on ubuntu; a canary job that must fail; `all-green` over all of them.
 
 ## Scope
 
-GitHub template repository for the `Uni*` family: "Use this template" starts an
-engine with the layout, the gates and the CI in place. Apache-2.0, DCO.
+Structured-document I/O and conversion: Markdown, reStructuredText, AsciiDoc
+and RTF through one neutral document model. Parsing is bounded and every bound
+is named; a construct a target cannot carry is reported rather than dropped.
+Reachable from Nim, from C and from Python. Apache-2.0, DCO.

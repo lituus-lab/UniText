@@ -9,18 +9,18 @@ nb.title = "UniText"
 nbText: """
 # UniText
 
-The scaffold every `lituus-lab` `Uni*` engine starts from. Press **Use this
-template** on GitHub and a new engine begins with this layout, these gates and
-this CI already in place.
+Structured documents, converted through one semantic model. Markdown,
+reStructuredText, AsciiDoc and RTF go in; the same four come out; and in
+between there is a single document tree that none of them owns.
 
-It carries one hello-world function, `fibonacci`, exposed across the three
-surfaces every engine ships: **Nim**, a **C ABI**, and a **Python** binding.
-The function is not the point. The shape is: what a chapter contains, what is
-shown rather than asserted, and where each surface differs from the others.
+The rule is **bounded, and honest about what it cannot carry**. Parsing has
+limits it will not exceed, and a construct a target format cannot express is
+*reported* rather than dropped in silence — which is the failure mode that
+makes document converters untrustworthy.
 
-**Read this front to back.** Each chapter uses what the one before it
-introduced, and the last two are about failure, which is where the three
-surfaces stop agreeing.
+Three surfaces, one engine: **Nim**, a **C ABI**, and a **Python** binding.
+
+**Read this front to back.** Each chapter uses what the one before introduced.
 
 ## Installing
 
@@ -36,10 +36,6 @@ build/unigate clibStatic
 cc -Iinclude your.c libUniText.a
 ```
 
-The PyPI distribution is `lituus-unitext`; the import name stays
-`unitext`. Those are two decisions, and the bare names are not all
-available.
-
 ## What runs here
 
 Every Nim block on these pages is compiled and run when the book is built, and
@@ -48,16 +44,29 @@ the docs build — so prose that outlived its API cannot ship.
 
 That guarantee covers `nbCode` blocks and nothing else. A fenced block written
 inside prose is a picture of code, not code.
+
+## A conversion, end to end
 """
 
 nbCode:
   import UniText
 
-  echo "version ", UniTextVersion
-  echo "fib(10) = ", fibonacci(10)
-  echo "fib(", FibMaxN, ") = ", fibonacci(FibMaxN)
+  const source = "# Portable document\n\n" &
+    "Text with **strong meaning**, `code`, and a [link](https://example.org).\n"
+
+  let detected = detectFormat(source)
+  echo "detected: ", detected.format, "  confidence: ", detected.confidence
+
+  let converted = convertDocument(source, formatMarkdown,
+    formatRestructuredText)
+  echo "--- reStructuredText ---"
+  echo converted.content
 
 nbText: """
+Nothing was guessed twice. `detectFormat` answers with a confidence rather than
+a verdict, because a short document often *is* ambiguous — and a caller who
+already knows the format passes it instead of asking.
+
 ## Supported versions
 
 Nim 2.2 or later, on Linux, macOS and Windows. CPython 3.10 to 3.14, on the
@@ -68,13 +77,6 @@ same three. The `0.x` C ABI is not frozen.
 Apache-2.0. Contributions take a DCO sign-off; see `CONTRIBUTING.md`, and
 `CODE_OF_CONDUCT.md` for conduct. Questions and defects go to the repository's
 issue tracker.
-
-## What this book does not cover
-
-The build gates (`build/unigate`, the canary, `all-green`), which are in
-`README.md`; the layer check in `vgraph.cfg`; and the release workflow. Those
-are about the repository rather than the library, and a reader cloning the
-template meets them in the README first.
 """
 
 nbSave

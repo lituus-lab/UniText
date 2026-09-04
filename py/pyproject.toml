@@ -1,23 +1,20 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 lituus-lab
 [build-system]
-requires = ["setuptools>=64", "wheel", "Cython>=3.0"]
+requires = ["setuptools==83.0.0", "wheel==0.47.0", "Cython==3.2.8"]
 build-backend = "setuptools.build_meta"
 
 [project]
-# The distribution is namespaced, the import name is not: `pip install
-# lituus-unitext` then `import unitext`. Two decisions, and the bare
-# names are not all available on PyPI.
-name = "lituus-unitext"
-version = "0.1.0"
-description = "Python binding for the UniText C library"
+name = "unitext"
+version = "0.2.0"
+description = "Python binding for structured-document I/O and conversion"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
-authors = [{ name = "lbartoletti" }]
-keywords = ["nim", "c-extension", "template"]
+authors = [{ name = "lituus-lab" }]
+keywords = ["documents", "markdown", "restructuredtext", "asciidoc", "rtf"]
 classifiers = [
-  "Development Status :: 2 - Pre-Alpha",
+  "Development Status :: 3 - Alpha",
   "Intended Audience :: Developers",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.10",
@@ -26,17 +23,12 @@ classifiers = [
   "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
   "Programming Language :: C",
-  "Topic :: Software Development :: Libraries",
+  "Topic :: Text Processing :: Markup",
 ]
 dependencies = []
 
-[project.urls]
-Homepage = "https://github.com/lituus-lab/UniText"
-Repository = "https://github.com/lituus-lab/UniText"
-Issues = "https://github.com/lituus-lab/UniText/issues"
-
 [project.optional-dependencies]
-test = ["pytest>=9.1.1"]
+test = ["pytest==9.1.0"]
 
 [tool.setuptools]
 packages = ["unitext"]
