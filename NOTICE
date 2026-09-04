@@ -2,3 +2,10 @@ UniText
 Copyright 2026 lituus-lab
 
 Licensed under the Apache License, Version 2.0. See LICENSE.
+
+----------------------------------------------------------------------------
+
+Depends on NimContracts (github.com/lbartoletti/NimContracts), MIT-licensed,
+tracked at its main branch HEAD. Its licence requires the copyright and
+permission notices to travel with any redistributed copy, and ADR-0002 requires
+this file to record the dependency.
