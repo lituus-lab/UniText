@@ -71,3 +71,20 @@ suite "Lightweight structured-text codecs":
     check serialized.diagnostics.len == 2
     check serialized.diagnostics[0].code == "asciidoc.soft-break-loss"
     check serialized.diagnostics[1].code == "asciidoc.extension-loss"
+
+suite "round trips the review found broken":
+  test "an rst heading carrying markup keeps its underline long enough":
+    # The underline was sized from the plain text while the title line carries
+    # the markup, so `# A **strong** title` came back as two paragraphs: the
+    # parser wants the underline at least as long as the title.
+    let rst = convertDocument("# A **strong** title\r\n\r\nBody.\r\n",
+      formatMarkdown, formatRestructuredText).content
+    let parsed = parseDocument(rst, formatRestructuredText)
+    check parsed.document.blocks[0].kind == blockHeading
+    check parsed.document.blocks[1].kind == blockParagraph
+
+  test "a heading short enough to fall under the parser's floor still holds":
+    let rst = convertDocument("# A\r\n", formatMarkdown,
+      formatRestructuredText).content
+    check parseDocument(rst, formatRestructuredText).document.blocks[0].kind ==
+      blockHeading

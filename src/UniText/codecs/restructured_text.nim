@@ -91,8 +91,13 @@ proc serializeRestructuredText*(document: Document): SerializeResult =
       let value = node.inlines.serializeInline(dialectRestructuredText,
         result.diagnostics)
       let marker = ["=", "-", "~", "^"][min(node.level, 4) - 1]
-      result.content.add(value & "\n" & marker.repeat(
-          node.inlines.plainText.len) &
+      # The emitted line's length, not the plain text's: `value` carries the
+      # markup and escapes, so a heading with strong, code or a link got an
+      # underline shorter than its title. The parser wants the underline at
+      # least as long as the title and longer than two characters, so that
+      # output came back as a paragraph and the heading was lost on a round
+      # trip -- in an engine whose rule is that nothing is lost.
+      result.content.add(value & "\n" & marker.repeat(max(value.len, 3)) &
         "\n\n")
     of blockParagraph:
       result.content.add(node.inlines.serializeInline(dialectRestructuredText,
