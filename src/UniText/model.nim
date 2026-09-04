@@ -362,8 +362,8 @@ proc validate*(document: Document; limits = DefaultParseLimits) =
   # field -- Nim leaves an int at zero -- rejected every document with
   # "decoded text limit exceeded", a message about a limit the caller never
   # set. Refusing the limits themselves says where the mistake is.
-  if limits.maxNestingDepth < 1 or limits.maxNodes < 1 or
-      limits.maxDecodedBytes < 1:
+  if limits.maxInputBytes < 1 or limits.maxNestingDepth < 1 or
+      limits.maxNodes < 1 or limits.maxDecodedBytes < 1:
     raise newException(ModelError, "parse limits must be positive and consistent")
   var identifiers = initHashSet[string]()
   var count = 0

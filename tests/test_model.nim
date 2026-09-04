@@ -133,6 +133,13 @@ suite "parse limits are checked before any document is":
     expect ModelError:
       validate(emptyDocument(), partial)
 
+  test "maxInputBytes counts as much as the other three":
+    # It was the one field `validate` did not look at, so a zero there passed
+    # the check that exists to catch exactly that.
+    expect ModelError:
+      validate(emptyDocument(), ParseLimits(maxNestingDepth: 8, maxNodes: 100,
+        maxDecodedBytes: 1024))
+
   test "a fully named one is accepted":
     let complete = ParseLimits(maxInputBytes: 1024, maxNestingDepth: 8,
       maxNodes: 100, maxDecodedBytes: 1024)
