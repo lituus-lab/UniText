@@ -26,6 +26,11 @@ proc inputString(data: pointer; length: csize_t): string =
   if data == nil: raise newException(ValueError, "input pointer is null")
   if uint64(length) > uint64(high(int)):
     raise newException(ValueError, "input length exceeds the platform limit")
+  # Before the copy, not after. Parsing applies maxInputBytes, but this
+  # allocates a second buffer of whatever the caller declared first -- so a
+  # length the parser would refuse still costs the memory once.
+  if uint64(length) > uint64(DefaultParseLimits.maxInputBytes):
+    raise newException(ValueError, "input length exceeds the parse limit")
   result = newString(int(length))
   copyMem(addr result[0], data, int(length))
 
