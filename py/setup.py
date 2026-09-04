@@ -54,7 +54,16 @@ def ensure_library():
     if project is None:
         raise SystemExit("setup.py: UniText Nim sources are missing")
     try:
-        subprocess.check_call(["nimble", TASK, "-y"], cwd=project)
+        # Through the gate, not bare: nimble exits 0 even when an `exec`
+        # inside a task failed, so check_call would see a success that never
+        # produced the library and the link would fail with something obscure.
+        gate = os.path.join(project, "build",
+                            "unigate.exe" if sys.platform == "win32" else "unigate")
+        if not os.path.exists(gate):
+            subprocess.check_call(
+                ["nim", "c", "--hints:off", "-o:" + gate, "tools/gate.nim"],
+                cwd=project)
+        subprocess.check_call([gate, TASK], cwd=project)
     except (FileNotFoundError, subprocess.CalledProcessError) as error:
         raise SystemExit(f"setup.py: unable to build UniText: {error}")
     built = os.path.join(project, LIBRARY)
