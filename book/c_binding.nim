@@ -22,34 +22,44 @@ proc run(command: string): string =
 nbText: """
 # The C surface
 
-Two shapes. The stateless one converts a string and hands the result back; the
-handle-based one keeps a document open so a caller can parse once, edit, and
-serialize several times without paying for a reparse.
+A caller-supplied buffer, twice. Every function that produces text takes a
+destination and a capacity and returns the bytes it needs, NUL included; pass
+`NULL, 0` to ask for the size, allocate, and call again. Nothing is allocated
+on your behalf and nothing has to be freed through this library.
 
 ```c
-char *unitext_convert(const char *content, int source, int target);
-char *unitext_convert_report(const char *content, int source, int target);
+size_t unitext_convert(const void *data, size_t length,
+                       int source_format, int target_format,
+                       char *destination, size_t capacity);
+size_t unitext_convert_report(const void *data, size_t length,
+                              int source_format, int target_format,
+                              char *destination, size_t capacity);
 
-void *unitext_document_parse(const char *content, int format);
-char *unitext_document_serialize(void *document, int format);
-char *unitext_document_to_json(void *document);
-void  unitext_document_destroy(void *document);
+unitext_document unitext_document_parse(const void *data, size_t length,
+                                        int format);
+size_t unitext_document_serialize(unitext_document document, int format,
+                                  char *destination, size_t capacity);
+void   unitext_document_destroy(unitext_document document);
 
+void        unitext_init(void);
 int         unitext_status(void);
 const char *unitext_last_error(void);
-void        unitext_cleanup(void *value);
 ```
 
-`unitext_convert` gives the converted text; `unitext_convert_report` gives the
-text *and* the diagnostics, which is what a caller wants whenever the target
-carries less than the source.
+**Zero means it failed.** Not "empty": a successful call always needs at least
+the terminating NUL, so a zero return is unambiguous, and the reason is in
+`unitext_status` and `unitext_last_error`.
 
-## Three rules about memory
+`unitext_convert` gives the converted text; `unitext_convert_report` gives a
+JSON object with the text *and* the diagnostics — the call to make whenever
+the target format carries less than the source.
 
-- **Every `char *` is yours**, released with `unitext_cleanup` exactly once.
-- **A document handle is yours too**, released with `unitext_document_destroy`.
-- **NULL means it failed.** The reason is `unitext_status` and
-  `unitext_last_error`; no Nim exception crosses the boundary.
+## Two shapes
+
+The functions above convert a string in one go. The `unitext_document_*` family
+keeps a parsed document open instead, so a caller can parse once and serialize
+several times, or edit in between, without paying for a reparse. A handle is
+released with `unitext_document_destroy`, exactly once.
 
 ## Driven from C
 """
@@ -59,11 +69,11 @@ nbCode:
           " && ./build/book_c_demo")
 
 nbText: """
-No Nim runtime call appears in that program. Every entry point initializes the
-runtime itself, once, through a platform once-primitive: the library is built
-`--noMain`, which suppresses the constructor a shared library would otherwise
-get, so without that guard the first call would run against globals nobody had
-set up.
+That program calls `unitext_init()` first. The library is built `--noMain`,
+which suppresses the constructor a shared build would otherwise get, so nothing
+initializes the Nim runtime on its own; the entry points guard themselves with
+a platform once-primitive, and `unitext_init` is how a caller does it up front
+rather than paying for the check on the first real call.
 """
 
 nbSave
