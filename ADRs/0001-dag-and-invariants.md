@@ -9,4 +9,4 @@ The model is the lowest layer. Format detection and codec contracts depend on th
 implement those contracts; interchange and edits operate on the model; dispatch combines codecs;
 the C ABI is the outermost engine surface. No module depends on a UI or application.
 
-`nimble checkVGraph` enforces the declared direction. UniText has no Uni-family engine dependency.
+`build/unigate checkVGraph` enforces the declared direction. UniText has no Uni-family engine dependency.

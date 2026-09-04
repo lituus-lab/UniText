@@ -52,7 +52,7 @@ LICENSE NOTICE CONTRIBUTING.md SECURITY.md .gitignore README.md AGENTS.md CLAUDE
 - The C ABI never raises: a failure is a NULL return with a code in
   `unitext_status` and a message in `unitext_last_error`. Every returned string
   is the caller's, released once with `unitext_cleanup`.
-- Layers, checked by `nimble checkVGraph`: `model` up to `c_api`, never upward.
+- Layers, checked by `build/unigate checkVGraph`: `model` up to `c_api`, never upward.
   Every name in `vgraph.cfg` answers to a real module -- one that does not
   constrains nothing, and the check then passes on a graph it never read.
 
