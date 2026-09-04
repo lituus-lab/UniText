@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 lituus-lab
-# UniText — reference scaffold for the lituus-lab Uni* family.
+# UniText — structured-document I/O and conversion for the lituus-lab Uni* family.
 
-version       = "0.1.0"
+version       = "0.2.0"
 author        = "lituus-lab"
-description   = "Reference template for the lituus-lab Uni* libraries (Nim + C-ABI + Python)"
+description   = "Structured-document I/O and conversion (Nim + C ABI + Python)"
 license       = "Apache-2.0"
 srcDir        = "src"
 
@@ -47,9 +47,12 @@ import std/strutils
 # other platform here ships `python3`.
 const python = when defined(windows): "python" else: "python3"
 
-const CoverageMin = 90.0
-  ## Line coverage below this fails `coverage`. The template sits at 100 on one
-  ## module; a real engine sets what its own suite can hold.
+const CoverageMin = 80.0
+  ## Line coverage below this fails `coverage`. Twelve suites over nine modules
+  ## reach 84.1; the floor sits below that rather than at it, so a change that
+  ## adds an unreached branch fails on its own merits and not on a rounding.
+  ## What the suites do not reach is the codec error paths no fixture exercises
+  ## yet -- `fuzz` walks those, from outside gcov's view.
 
 const gateExe =
   when defined(windows): "build/unigate.exe" else: "build/unigate"
@@ -128,7 +131,7 @@ task docs, "API reference + book into pages/ — what CI publishes":
   # the absolute path of the machine that built it. It does not get published.
   rmFile "pages/book.json"
   # The generated reference sits beside the book, not inside it.
-  exec "nim doc --index:on --outdir:pages/api --project --hints:off src/UniText.nim"
+  exec "nim doc --path:src --index:on --outdir:pages/api --project --hints:off src/UniText.nim"
   # ...and wears the same theme. `nim doc` has no stylesheet option, so the
   # palette is appended to the one it just wrote. Left alone, that reference
   # ships six tokens below their contrast bar.
@@ -137,22 +140,62 @@ task docs, "API reference + book into pages/ — what CI publishes":
   done "docs"
 
 task test, "Nim tests (debug, contracts active)":
-  exec "nim c -r --path:src -o:build/test_fibonacci tests/test_fibonacci.nim"
+  exec "nim c -r --path:src -o:build/test_model tests/test_model.nim"
+  exec "nim c -r --path:src -o:build/test_detect tests/test_detect.nim"
+  exec "nim c -r --path:src -o:build/test_markdown tests/test_markdown.nim"
+  exec "nim c -r --path:src -o:build/test_lightweight_codecs tests/test_lightweight_codecs.nim"
+  exec "nim c -r --path:src -o:build/test_rtf tests/test_rtf.nim"
+  exec "nim c -r --path:src -o:build/test_io tests/test_io.nim"
+  exec "nim c -r --path:src -o:build/test_edit tests/test_edit.nim"
+  exec "nim c -r --path:src -o:build/test_interchange tests/test_interchange.nim"
+  exec "nim c -r --path:src -o:build/test_official_corpus tests/test_official_corpus.nim"
+  exec "nim c -r --path:src -o:build/test_report tests/test_report.nim"
+  exec "nim c -r --path:src -o:build/test_source_maps tests/test_source_maps.nim"
   exec "nim c -r --path:src -o:build/test_version tests/test_version.nim"
   done "test"
 
 task testRelease, "Nim tests (release, contracts compiled away)":
-  exec "nim c -r -d:release --path:src -o:build/test_fibonacci_rel tests/test_fibonacci.nim"
+  exec "nim c -r -d:release --path:src -o:build/test_model_rel tests/test_model.nim"
+  exec "nim c -r -d:release --path:src -o:build/test_detect_rel tests/test_detect.nim"
+  exec "nim c -r -d:release --path:src -o:build/test_markdown_rel tests/test_markdown.nim"
+  exec "nim c -r -d:release --path:src -o:build/test_lightweight_codecs_rel tests/test_lightweight_codecs.nim"
+  exec "nim c -r -d:release --path:src -o:build/test_rtf_rel tests/test_rtf.nim"
+  exec "nim c -r -d:release --path:src -o:build/test_io_rel tests/test_io.nim"
+  exec "nim c -r -d:release --path:src -o:build/test_edit_rel tests/test_edit.nim"
+  exec "nim c -r -d:release --path:src -o:build/test_interchange_rel tests/test_interchange.nim"
+  exec "nim c -r -d:release --path:src -o:build/test_official_corpus_rel tests/test_official_corpus.nim"
+  exec "nim c -r -d:release --path:src -o:build/test_report_rel tests/test_report.nim"
+  exec "nim c -r -d:release --path:src -o:build/test_source_maps_rel tests/test_source_maps.nim"
   exec "nim c -r -d:release --path:src -o:build/test_version_rel tests/test_version.nim"
   done "testRelease"
 
 task testCi, "Nim tests CI runs, debug — narrow this in a clone whose suite grows slow":
-  exec "nim c -r --path:src -o:build/test_fibonacci tests/test_fibonacci.nim"
+  exec "nim c -r --path:src -o:build/test_model tests/test_model.nim"
+  exec "nim c -r --path:src -o:build/test_detect tests/test_detect.nim"
+  exec "nim c -r --path:src -o:build/test_markdown tests/test_markdown.nim"
+  exec "nim c -r --path:src -o:build/test_lightweight_codecs tests/test_lightweight_codecs.nim"
+  exec "nim c -r --path:src -o:build/test_rtf tests/test_rtf.nim"
+  exec "nim c -r --path:src -o:build/test_io tests/test_io.nim"
+  exec "nim c -r --path:src -o:build/test_edit tests/test_edit.nim"
+  exec "nim c -r --path:src -o:build/test_interchange tests/test_interchange.nim"
+  exec "nim c -r --path:src -o:build/test_official_corpus tests/test_official_corpus.nim"
+  exec "nim c -r --path:src -o:build/test_report tests/test_report.nim"
+  exec "nim c -r --path:src -o:build/test_source_maps tests/test_source_maps.nim"
   exec "nim c -r --path:src -o:build/test_version tests/test_version.nim"
   done "testCi"
 
 task testCiRelease, "Nim tests CI runs, release — narrow this in a clone whose suite grows slow":
-  exec "nim c -r -d:release --path:src -o:build/test_fibonacci_rel tests/test_fibonacci.nim"
+  exec "nim c -r -d:release --path:src -o:build/test_model_rel tests/test_model.nim"
+  exec "nim c -r -d:release --path:src -o:build/test_detect_rel tests/test_detect.nim"
+  exec "nim c -r -d:release --path:src -o:build/test_markdown_rel tests/test_markdown.nim"
+  exec "nim c -r -d:release --path:src -o:build/test_lightweight_codecs_rel tests/test_lightweight_codecs.nim"
+  exec "nim c -r -d:release --path:src -o:build/test_rtf_rel tests/test_rtf.nim"
+  exec "nim c -r -d:release --path:src -o:build/test_io_rel tests/test_io.nim"
+  exec "nim c -r -d:release --path:src -o:build/test_edit_rel tests/test_edit.nim"
+  exec "nim c -r -d:release --path:src -o:build/test_interchange_rel tests/test_interchange.nim"
+  exec "nim c -r -d:release --path:src -o:build/test_official_corpus_rel tests/test_official_corpus.nim"
+  exec "nim c -r -d:release --path:src -o:build/test_report_rel tests/test_report.nim"
+  exec "nim c -r -d:release --path:src -o:build/test_source_maps_rel tests/test_source_maps.nim"
   exec "nim c -r -d:release --path:src -o:build/test_version_rel tests/test_version.nim"
   done "testCiRelease"
 
@@ -180,18 +223,18 @@ const
     else: ""
 
 task clib, "C shared library":
-  exec "nim c --app:lib -d:noAutoInit --noMain --mm:arc -d:release -o:" & sharedLib & macArgs &
+  exec "nim c --path:src --app:lib -d:noAutoInit --noMain --mm:arc -d:release -o:" & sharedLib & macArgs &
        " src/UniText/c_api.nim"
   done "clib"
 
 task clibStatic, "C static library":
-  exec "nim c --app:staticlib --noMain --mm:arc -d:release -d:noAutoInit -o:" & staticLib &
+  exec "nim c --path:src --app:staticlib --noMain --mm:arc -d:release -d:noAutoInit -o:" & staticLib &
        " src/UniText/c_api.nim"
   done "clibStatic"
 
 task clibMsvc, "C static library, MSVC ABI (Windows Python extension)":
   # CPython on Windows is MSVC-built and cannot link MinGW output.
-  exec "nim c --cc:vcc --app:staticlib --noMain --mm:arc -d:release -d:noAutoInit" &
+  exec "nim c --path:src --cc:vcc --app:staticlib --noMain --mm:arc -d:release -d:noAutoInit" &
        " -o:UniText.lib src/UniText/c_api.nim"
   done "clibMsvc"
 
@@ -264,7 +307,7 @@ task coverage, "LCOV + HTML coverage report for the Nim sources (needs lcov)":
   rmDir "coverage"
   exec "nim c --path:src --nimcache:" & cache &
        " --debugger:native --passC:--coverage --passL:--coverage" &
-       " -o:build/test_coverage tests/test_fibonacci.nim"
+       " -o:build/test_coverage tests/test_coverage.nim"
   exec "./build/test_coverage"
   exec "lcov --capture --directory " & cache & " --base-directory ." &
        " --include \"*/src/UniText/*\" --ignore-errors mismatch" &
@@ -307,3 +350,63 @@ task coverage, "LCOV + HTML coverage report for the Nim sources (needs lcov)":
          "% this repo requires", 1)
   echo "coverage: " & $rate & "% of lines, at or above " & $CoverageMin & "%"
   done "coverage"
+
+# --- UniText's own tasks -----------------------------------------------------
+# Not in the family template: a source SBOM, a differential run against an
+# independent converter, and three fuzzing depths. Each ends with `done`, so
+# the gate can tell "ran to the end" from "nimble exited 0".
+
+task sbom, "Generate and verify the deterministic SPDX source SBOM":
+  mkDir "build"
+  exec python & " tools/source_sbom.py create --root . --name UniText --version " & version &
+    " --output build/UniText-source.spdx.json"
+  exec python & " tools/source_sbom.py verify --root . --sbom build/UniText-source.spdx.json"
+  exec python & " -m unittest -q tests/test_source_sbom.py"
+  done "sbom"
+
+task differential, "Compare the pinned official corpus with Pandoc 3.10.2":
+  mkDir "build"
+  exec "nim c -d:release --path:src --nimcache:build/cache_corpus_probe" &
+    " --hints:off -o:build/corpus_probe tools/corpus_probe.nim"
+  exec python & " tools/differential_corpus.py" &
+    " --corpus fixtures/official/cases-v1.json --probe build/corpus_probe" &
+    " --pandoc-version 3.10.2"
+  done "differential"
+
+task fuzzSmoke, "Run the deterministic codec mutation smoke corpus":
+  mkDir "build"
+  exec "nim c -d:release --path:src --nimcache:build/cache_fuzz_codecs" &
+    " --hints:off -o:build/fuzz_codecs tests/fuzz_codecs.nim"
+  exec "build/fuzz_codecs --iterations=5000 --seed=1592606758"
+  done "fuzzSmoke"
+
+task fuzz, "Run the long deterministic codec mutation corpus":
+  mkDir "build"
+  exec "nim c -d:release --path:src --nimcache:build/cache_fuzz_codecs" &
+    " --hints:off -o:build/fuzz_codecs tests/fuzz_codecs.nim"
+  exec "build/fuzz_codecs --iterations=100000 --seed=1592606758"
+  done "fuzz"
+
+task fuzzCoverageBuild, "Build the ASan/UBSan libFuzzer target and seed corpus":
+  mkDir "build"
+  exec "sh tools/build_coverage_fuzzer.sh"
+  exec python & " tools/build_fuzz_seed_corpus.py" &
+    " --corpus fixtures/official/cases-v1.json --output build/fuzz-corpus"
+  exec python & " -m unittest -q tests/test_fuzz_seed_corpus.py"
+  done "fuzzCoverageBuild"
+
+task fuzzCoverageSmoke, "Run 10,000 coverage-guided, sanitized iterations":
+  exec gate("fuzzCoverageBuild")
+  mkDir "build/fuzz-artifacts"
+  exec "build/fuzz_unitext build/fuzz-corpus" &
+    " -runs=10000 -seed=1592606758 -max_len=65536 -timeout=10" &
+    " -rss_limit_mb=2048 -malloc_limit_mb=256 -use_value_profile=1" &
+    " -print_final_stats=1 -artifact_prefix=build/fuzz-artifacts/" &
+    " -dict=fixtures/fuzz/unitext.dict"
+  done "fuzzCoverageSmoke"
+
+task pySdist, "Build a Python source distribution":
+  cd "py"
+  exec python & " -m build --sdist --no-isolation"
+  cd ".."
+  done "pySdist"

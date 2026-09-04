@@ -1,16 +1,18 @@
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <!-- Copyright 2026 lituus-lab -->
-# Security Policy
+# Security policy
 
-Report vulnerabilities privately (email the maintainer — see git history),
-not via a public issue. Include: description + impact, minimal reproducer,
-affected version (`unitext_version()`).
+Report vulnerabilities privately to the maintainer. Include the affected version, input bytes,
+selected format, observed behavior, and the smallest reproducer.
 
-Only the latest released line is supported. The `0.1.x` C ABI is not yet frozen.
+UniText parses untrusted text under explicit byte, node, nesting, and decoded-text limits. Release
+builds retain Nim bounds and overflow checks. The C ABI traps exceptions and defects, rejects null
+handles and inconsistent lengths, and never unwinds into foreign code. As with ordinary C APIs, an
+arbitrary non-null pointer that was not returned by UniText is undefined caller behavior.
 
-## Surface
+The C ABI is single-threaded. Call `unitext_init` before other entry points, externally serialize
+calls, and destroy every document handle exactly once. Output buffer functions support a size-query
+call followed by a caller-owned allocation.
 
-- C ABI trusts its callers (C pointers, lengths) and never raises; out-of-range
-  input is clamped. Foreign callers validate untrusted input before calling.
-- Python binding adds the domain check and raises `ValueError`/`TypeError`.
-- Single-threaded, reentrant; no global mutable state.
+The 1.x line receives compatibility-preserving fixes. Unsupported syntax is not a security bypass:
+it remains text, survives as an extension, produces a diagnostic, or fails parsing.

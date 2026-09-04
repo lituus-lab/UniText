@@ -1,0 +1,11 @@
+= Portable document
+
+This paragraph contains *strong text*, _emphasis_, `code`, and a https://example.com[link].
+
+* First item
+* Second item
+
+[source,nim]
+----
+echo "portable"
+----

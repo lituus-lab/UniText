@@ -1,0 +1,35 @@
+{
+  "schema": "unitext.official-corpus",
+  "version": 1,
+  "sources": [
+    {"id":"commonmark-0.31.2","revision":"9103e341a973013013bb1a80e13567007c5cef6f","url":"https://github.com/commonmark/commonmark-spec","license":"BSD-2-Clause"},
+    {"id":"docutils-0.23","revision":"sha256:746f5060322511280a1e50eb76846ed6bf2342984b2ac04dc42caa1a8d78799e","url":"https://pypi.org/project/docutils/0.23/","license":"Public-Domain/BSD-2-Clause/GPL-3.0-or-later"},
+    {"id":"asciidoc-tck","revision":"cdfada9c2768b164eadf4bc12e9f9c68e6caf68a","url":"https://gitlab.eclipse.org/eclipse/asciidoc-lang/asciidoc-tck","license":"EPL-2.0"},
+    {"id":"msft-rtf-1.9.1","revision":"2008-03-19","url":"https://interoperability.blob.core.windows.net/files/Archive_References/%5bMSFT-RTF%5d.pdf","license":"Microsoft-specification; vectors independently authored"}
+  ],
+  "cases": [
+    {"id":"commonmark-62","source":"commonmark-0.31.2","format":"markdown","input":"# foo\n## foo\n### foo\n#### foo\n##### foo\n###### foo\n","expected_kinds":["heading","heading","heading","heading","heading","heading"],"expected_plain":"foo\nfoo\nfoo\nfoo\nfoo\nfoo"},
+    {"id":"commonmark-66","source":"commonmark-0.31.2","format":"markdown","input":"# foo *bar* \\*baz\\*\n","expected_kinds":["heading"],"expected_plain":"foo bar *baz*"},
+    {"id":"commonmark-119","source":"commonmark-0.31.2","format":"markdown","input":"```\n<\n >\n```\n","expected_kinds":["code"],"expected_plain":"<\n >"},
+    {"id":"commonmark-122","source":"commonmark-0.31.2","format":"markdown","input":"```\naaa\n~~~\n```\n","expected_kinds":["code"],"expected_plain":"aaa\n~~~"},
+    {"id":"commonmark-142","source":"commonmark-0.31.2","format":"markdown","input":"```ruby\ndef foo(x)\n  return 3\nend\n```\n","expected_kinds":["code"],"expected_plain":"def foo(x)\n  return 3\nend"},
+    {"id":"commonmark-322","source":"commonmark-0.31.2","format":"markdown","input":"- a\n","expected_kinds":["unordered_list"],"expected_plain":"a"},
+    {"id":"commonmark-328","source":"commonmark-0.31.2","format":"markdown","input":"`foo`\n","expected_kinds":["paragraph"],"expected_plain":"foo"},
+    {"id":"commonmark-350","source":"commonmark-0.31.2","format":"markdown","input":"*foo bar*\n","expected_kinds":["paragraph"],"expected_plain":"foo bar"},
+    {"id":"commonmark-378","source":"commonmark-0.31.2","format":"markdown","input":"**foo bar**\n","expected_kinds":["paragraph"],"expected_plain":"foo bar"},
+    {"id":"commonmark-483","source":"commonmark-0.31.2","format":"markdown","input":"[link](/uri)\n","expected_kinds":["paragraph"],"expected_plain":"link"},
+    {"id":"commonmark-650","source":"commonmark-0.31.2","format":"markdown","input":"hello $.;'there\n","expected_kinds":["paragraph"],"expected_plain":"hello $.;'there"},
+    {"id":"commonmark-651","source":"commonmark-0.31.2","format":"markdown","input":"Foo χρῆν\n","expected_kinds":["paragraph"],"expected_plain":"Foo χρῆν"},
+    {"id":"commonmark-652","source":"commonmark-0.31.2","format":"markdown","input":"Multiple     spaces\n","expected_kinds":["paragraph"],"expected_plain":"Multiple     spaces"},
+    {"id":"docutils-paragraph-0","source":"docutils-0.23","format":"rst","input":"A paragraph.\n","expected_kinds":["paragraph"],"expected_plain":"A paragraph."},
+    {"id":"docutils-paragraph-2","source":"docutils-0.23","format":"rst","input":"Line 1.\nLine 2.\nLine 3.\n","expected_kinds":["paragraph"],"expected_plain":"Line 1. Line 2. Line 3."},
+    {"id":"docutils-section-header-0","source":"docutils-0.23","format":"rst","input":"Title\n=====\n\nParagraph.\n","expected_kinds":["heading","paragraph"],"expected_plain":"Title\nParagraph."},
+    {"id":"docutils-emphasis-0","source":"docutils-0.23","format":"rst","input":"*emphasis*\n","expected_kinds":["paragraph"],"expected_plain":"emphasis"},
+    {"id":"asciidoc-tck-inline-single-word","source":"asciidoc-tck","format":"asciidoc","input":"hello\n","expected_kinds":["paragraph"],"expected_plain":"hello"},
+    {"id":"asciidoc-tck-paragraph-multiple-lines","source":"asciidoc-tck","format":"asciidoc","input":"This paragraph has multiple lines that wrap after reaching the 72\ncharacter limit set by the text editor.\n","expected_kinds":["paragraph"],"expected_plain":"This paragraph has multiple lines that wrap after reaching the 72 character limit set by the text editor."},
+    {"id":"asciidoc-tck-sibling-paragraphs","source":"asciidoc-tck","format":"asciidoc","input":"This document has multiple paragraphs.\n\nParagraphs are separated by one or more empty lines.\n","expected_kinds":["paragraph","paragraph"],"expected_plain":"This document has multiple paragraphs.\nParagraphs are separated by one or more empty lines."},
+    {"id":"asciidoc-tck-section-title-body","source":"asciidoc-tck","format":"asciidoc","input":"== Section Title\n\nparagraph\n","expected_kinds":["heading","paragraph"],"expected_plain":"Section Title\nparagraph"},
+    {"id":"rtf-ascii-derived","source":"msft-rtf-1.9.1","format":"rtf","input":"{\\rtf1\\ansi Portable text\\par}","expected_kinds":["paragraph"],"expected_plain":"Portable text"},
+    {"id":"rtf-unicode-derived","source":"msft-rtf-1.9.1","format":"rtf","input":"{\\rtf1\\ansi\\uc1 Caf\\u233? \\u-10179?\\u-8704?\\par}","expected_kinds":["paragraph"],"expected_plain":"Café 😀","pandoc_differential":false,"exclusion":"Pandoc 3.10.2 emits replacement characters instead of combining the UTF-16 surrogate pair; the authoritative UniText expectation remains independently tested."}
+  ]
+}

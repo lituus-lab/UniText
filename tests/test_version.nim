@@ -12,7 +12,7 @@ import UniText
 
 const Root = currentSourcePath().parentDir.parentDir
 
-proc valueOf(path, key, opener, closer: string): string =
+proc stated(path, key, opener, closer: string): string =
   ## The first `key … opener VALUE closer` on one line of the file; an empty
   ## `closer` reads to the end of the line. Deliberately crude: a parser per
   ## format would be more code than the thing it checks.
@@ -27,6 +27,14 @@ proc valueOf(path, key, opener, closer: string): string =
     if closes < 0: continue
     return value[0 ..< closes]
   ""
+
+proc valueOf(path, key, opener, closer: string): string =
+  ## `stated`, and a failure when it finds nothing. The empty string it returns
+  ## silently makes a check that compares two of them pass while reading
+  ## neither -- which happened in UniMCP, on both sides of one check at once.
+  result = stated(path, key, opener, closer)
+  doAssert result.len > 0,
+    "test_version: nothing matched `" & key & "` … `" & opener & "` in " & path
 
 suite "one version, six copies":
   let manifest = valueOf("UniText.nimble", "version", "\"", "\"")
@@ -58,17 +66,5 @@ suite "one version, six copies":
     check valueOf("py/pyproject.toml", "version", "\"", "\"") == manifest
 
   test "the Python test expects it":
-    check valueOf("py/tests/test_fibonacci.py", "unitext.version()", "\"",
+    check valueOf("py/tests/test_unitext.py", "unitext.version()", "\"",
         "\"") == manifest
-
-suite "one domain bound, two copies":
-  # Python reads it from the header through the binding, so only the Nim
-  # constant and the C macro state it -- and a C consumer needs a literal.
-  test "the C macro agrees with the Nim constant":
-    check valueOf("include/UniText.h", "UNITEXT_FIB_MAX_N", " ", "") == $FibMaxN
-
-  test "the bound is the largest that fits, and one past it does not":
-    # int64 holds fib(92); fib(93) is 12200160415121876738, which it does not.
-    check fibonacci(FibMaxN) == 7540113804746346429
-    check fibonacci(FibMaxN) < high(int)
-    check float(fibonacci(FibMaxN)) * 1.6180339887 > float(high(int))

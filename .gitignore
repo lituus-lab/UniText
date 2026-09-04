@@ -40,6 +40,9 @@ py/dist/
 py/build/
 py/*.egg-info/
 py/**/__pycache__/
+# The fuzz and SBOM helpers are Python too, and they live outside py/.
+tests/__pycache__/
+tools/__pycache__/
 py/.pytest_cache/
 # vendored by setup.py (vendor_nim_source) right before `sdist` packages
 # files -- shipped inside the sdist tarball, never tracked here

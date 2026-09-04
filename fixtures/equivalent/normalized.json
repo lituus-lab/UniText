@@ -1,0 +1,9 @@
+{
+  "metadata": {},
+  "blocks": [
+    {"kind": "heading", "level": 1, "text": "Portable document"},
+    {"kind": "paragraph", "text": "This paragraph contains strong text, emphasis, code, and a link."},
+    {"kind": "unordered_list", "items": ["First item", "Second item"]},
+    {"kind": "code_block", "language": "nim", "text": "echo \"portable\""}
+  ]
+}

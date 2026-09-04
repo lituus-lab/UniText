@@ -1,25 +1,105 @@
 # SPDX-License-Identifier: Apache-2.0
 # Copyright 2026 lituus-lab
-## C ABI for UniText. Built --app:staticlib/--app:lib --noMain --mm:arc
-## -d:release. Keep in sync with include/UniText.h; tests/c links the header
-## against this lib, so a header that drifts fails to compile rather than at a
-## caller's site.
-##
-## No Nim exception crosses this boundary: `{.raises: [].}` on every entry
-## point is what proves it rather than a convention that has to be remembered.
+## Stable C ABI. Keep in sync with include/UniText.h.
 import ../UniText
 
-const UniTextVersionC: cstring = "0.1.0"
+const UniTextVersionC: cstring = "0.2.0"
 
-# Unmangled C symbols, C calling convention, exported from the shared lib.
-# --noMain suppresses the generated entry point and with it every auto-init
-# hook: neither the static nor the shared build emits a DllMain or an ELF
-# constructor, so nothing initializes the Nim runtime. The first entry point
-# then enters Nim code whose globals were never set up. The shared build was
-# assumed to be covered by a loader hook it does not have -- its registries
-# stayed empty and the contrast entry answered nan. Every --noMain task passes
-# -d:noAutoInit; an ordinary executable linking this module must not, since its
-# own main already ran NimMain.
+type AbiDocument = ref object
+  document: Document
+  diagnostics: seq[Diagnostic]
+
+var
+  abiStatus: cint
+  abiError: string
+
+proc setError(status: cint; message: string) =
+  abiStatus = status
+  abiError = message
+
+proc clearError() =
+  abiStatus = 0
+  abiError.setLen(0)
+
+proc inputString(data: pointer; length: csize_t): string =
+  if length == 0: return ""
+  if data == nil: raise newException(ValueError, "input pointer is null")
+  if uint64(length) > uint64(high(int)):
+    raise newException(ValueError, "input length exceeds the platform limit")
+  result = newString(int(length))
+  copyMem(addr result[0], data, int(length))
+
+proc formatFromC(value: cint): TextFormat =
+  case value
+  of 0: formatUnknown
+  of 1: formatMarkdown
+  of 2: formatRestructuredText
+  of 3: formatAsciiDoc
+  of 4: formatRtf
+  else: raise newException(ValueError, "unknown format identifier")
+
+proc formatToC(value: TextFormat): cint =
+  case value
+  of formatUnknown: 0
+  of formatMarkdown: 1
+  of formatRestructuredText: 2
+  of formatAsciiDoc: 3
+  of formatRtf: 4
+
+proc pin(document: Document; diagnostics: seq[Diagnostic] = @[]): pointer =
+  let handle = new(AbiDocument)
+  handle.document = document
+  handle.diagnostics = diagnostics
+  GC_ref(handle)
+  cast[pointer](handle)
+
+proc documentOf(handle: pointer): Document =
+  if handle == nil: raise newException(ValueError, "document handle is null")
+  cast[AbiDocument](handle).document
+
+proc diagnosticsOf(handle: pointer): seq[Diagnostic] =
+  if handle == nil: raise newException(ValueError, "document handle is null")
+  cast[AbiDocument](handle).diagnostics
+
+proc writeBuffer(value: string; destination: pointer;
+    capacity: csize_t): csize_t =
+  let required = csize_t(value.len + 1)
+  if destination == nil or capacity < required: return required
+  if value.len > 0: copyMem(destination, unsafeAddr value[0], value.len)
+  cast[ptr UncheckedArray[char]](destination)[value.len] = '\0'
+  required
+
+template guard(defaultValue: untyped; body: untyped): untyped =
+  try:
+    clearError()
+    body
+  except CodecError:
+    setError(2, getCurrentExceptionMsg())
+    defaultValue
+  except InterchangeError:
+    setError(2, getCurrentExceptionMsg())
+    defaultValue
+  except ModelError:
+    setError(2, getCurrentExceptionMsg())
+    defaultValue
+  except EditError:
+    setError(4, getCurrentExceptionMsg())
+    defaultValue
+  except ValueError:
+    setError(1, getCurrentExceptionMsg())
+    defaultValue
+  except Exception:
+    # No Nim exception may cross the C ABI, including a Defect raised by a
+    # bounds/resource invariant in an imported codec.
+    setError(5, getCurrentExceptionMsg())
+    defaultValue
+
+
+# A shared library runs NimMain from DllMain (Windows) or an ELF constructor;
+# a static one has neither, so nothing initializes the Nim runtime. The first
+# entry point then enters Nim code whose globals were never set up and the
+# process faults. The static-library tasks pass -d:noAutoInit; shared
+# builds must not, or NimMain runs twice.
 when defined(noAutoInit):
   # A once primitive, not a plain flag: two threads reaching an entry point
   # together would both see the flag unset, both call NimMain, and the second
@@ -54,23 +134,139 @@ static void unitext_runtime_ensure(void) {
 else:
   template ensureRuntime() = discard
 
+
 {.push exportc, cdecl, dynlib, raises: [].}
 
-proc unitext_fibonacci(n: cint): clonglong =
-  ## fibonacci(n), n clamped to [0, FibMaxN]: n < 0 gives 0, n > FibMaxN gives
-  ## fibonacci(FibMaxN). Clamps rather than reporting, because the question has
-  ## an answer at every n a caller can express.
+proc unitext_init(): cint =
   ensureRuntime()
-  let m = int(n)
-  if m < 0:
-    return clonglong(0)
-  if m > FibMaxN:
-    return fibonacci(FibMaxN).clonglong
-  fibonacci(m).clonglong
+  clearError()
+  1
+
+proc unitext_cleanup() =
+  ensureRuntime()
+  discard
 
 proc unitext_version(): cstring =
-  ## Static version string; do not free.
   ensureRuntime()
   UniTextVersionC
+
+proc unitext_abi_version(): cint =
+  ensureRuntime()
+  1
+
+proc unitext_last_status(): cint =
+  ensureRuntime()
+  abiStatus
+
+proc unitext_last_error(): cstring =
+  ensureRuntime()
+  if abiError.len == 0: "" else: abiError.cstring
+
+proc unitext_detect(data: pointer; length: csize_t; path: cstring;
+    confidence: ptr cdouble): cint =
+  ensureRuntime()
+  guard(cint(-1)):
+    let detection = detectFormat(inputString(data, length),
+      if path == nil: "" else: $path)
+    if confidence != nil: confidence[] = cdouble(detection.confidence)
+    formatToC(detection.format)
+
+proc unitext_document_parse(data: pointer; length: csize_t; format: cint;
+    path: cstring): pointer =
+  ensureRuntime()
+  guard(cast[pointer](nil)):
+    let requested = formatFromC(format)
+    let parsed = parseDocument(inputString(data, length), requested,
+      if path == nil: "" else: $path)
+    pin(parsed.document, parsed.diagnostics)
+
+proc unitext_document_from_json(data: pointer; length: csize_t): pointer =
+  ensureRuntime()
+  guard(cast[pointer](nil)):
+    pin(fromInterchangeString(inputString(data, length)))
+
+proc unitext_document_destroy(handle: pointer) =
+  ensureRuntime()
+  if handle != nil: GC_unref(cast[AbiDocument](handle))
+
+proc unitext_document_replace_text(handle: pointer; operationId, target,
+    value: cstring): pointer =
+  ensureRuntime()
+  guard(cast[pointer](nil)):
+    if operationId == nil or target == nil or value == nil:
+      raise newException(ValueError, "edit argument is null")
+    let edited = documentOf(handle).applyEdit(EditOperation(
+      operationId: $operationId,
+      target: ($target).nodeId, kind: editReplaceText, value: $value))
+    pin(edited.document)
+
+proc unitext_document_remove_block(handle: pointer; operationId,
+    target: cstring): pointer =
+  ensureRuntime()
+  guard(cast[pointer](nil)):
+    if operationId == nil or target == nil:
+      raise newException(ValueError, "edit argument is null")
+    pin(documentOf(handle).removeBlock($operationId, ($target).nodeId).document)
+
+proc unitext_document_insert_after_json(handle: pointer; operationId,
+    target: cstring; data: pointer; length: csize_t): pointer =
+  ensureRuntime()
+  guard(cast[pointer](nil)):
+    if operationId == nil or target == nil:
+      raise newException(ValueError, "edit argument is null")
+    let payload = fromInterchangeString(inputString(data, length))
+    if payload.blocks.len != 1:
+      raise newException(ValueError,
+        "insert payload must contain exactly one top-level block")
+    pin(documentOf(handle).insertBlockAfter($operationId, ($target).nodeId,
+      payload.blocks[0]).document)
+
+proc unitext_document_to_json(handle: pointer; destination: pointer;
+    capacity: csize_t): csize_t =
+  ensureRuntime()
+  guard(csize_t(0)):
+    writeBuffer(documentOf(handle).toInterchangeString, destination, capacity)
+
+proc unitext_document_diagnostics_json(handle: pointer; destination: pointer;
+    capacity: csize_t): csize_t =
+  ensureRuntime()
+  guard(csize_t(0)):
+    writeBuffer(diagnosticsOf(handle).diagnosticsToString, destination, capacity)
+
+proc unitext_document_serialize(handle: pointer; format: cint;
+    destination: pointer; capacity: csize_t): csize_t =
+  ensureRuntime()
+  guard(csize_t(0)):
+    let serialized = serializeDocument(documentOf(handle), formatFromC(format))
+    writeBuffer(serialized.content, destination, capacity)
+
+proc unitext_document_serialize_report(handle: pointer; format: cint;
+    destination: pointer; capacity: csize_t): csize_t =
+  ensureRuntime()
+  guard(csize_t(0)):
+    let serialized = serializeDocument(documentOf(handle), formatFromC(format))
+    writeBuffer(conversionReportToString(serialized.content,
+        serialized.diagnostics), destination, capacity)
+
+proc unitext_convert(data: pointer; length: csize_t; sourceFormat,
+    targetFormat: cint; destination: pointer; capacity: csize_t): csize_t =
+  ensureRuntime()
+  guard(csize_t(0)):
+    let converted = convertDocument(inputString(data, length), formatFromC(
+        sourceFormat),
+      formatFromC(targetFormat))
+    writeBuffer(converted.content, destination, capacity)
+
+proc unitext_convert_report(data: pointer; length: csize_t;
+    sourceFormat, targetFormat: cint; destination: pointer;
+    capacity: csize_t): csize_t =
+  ensureRuntime()
+  guard(csize_t(0)):
+    let converted = convertDocument(inputString(data, length), formatFromC(
+        sourceFormat),
+      formatFromC(targetFormat))
+    writeBuffer(conversionReportToString(converted.content,
+        converted.diagnostics),
+      destination, capacity)
 
 {.pop.}

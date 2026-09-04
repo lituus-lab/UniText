@@ -12,7 +12,7 @@ the build rather than quietly misleading a reader.
 | `nimib.toml` | nimib's own configuration, read from this directory |
 | `config.nims` | the paths each chapter's own compilation needs |
 | `index.nim` | the opening chapter |
-| `fibonacci.nim`, `contracts.nim`, `surfaces.nim` | the chapters |
+| `model.nim`, `codecs.nim`, `c_binding.nim`, `python_binding.nim` | the chapters |
 
 ## Building it
 
