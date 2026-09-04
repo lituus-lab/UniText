@@ -60,7 +60,7 @@ Text with *strong meaning*.
 Version 1 freezes the public node kinds, interchange schema version 2, C ABI symbols and numeric
 format identifiers, Python names, deterministic serialization, and resource-limit behavior. It
 does not claim complete compatibility with every revision or extension of the four source formats.
-See [the validation record](docs/validation.md) and [the version contract](ADRs/0004-version-1-contract.md).
+See [the validation record](docs/validation.md) and [the version contract](ADRs/0007-version-1-contract.md).
 The C ABI and Python binding expose both plain serialization and machine-readable serialization
 reports so applications can make loss handling explicit.
 
