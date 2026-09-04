@@ -48,6 +48,12 @@ def build(corpus_path: Path, output: Path) -> tuple[int, str]:
         seen_ids: set[str] = set()
         for case_index, fixture in enumerate(cases):
             case_id = fixture["id"]
+            # The id comes from the corpus file and lands in a path. An
+            # absolute one, or one carrying "..", writes outside the staging
+            # directory -- and the corpus is exactly the kind of file a fuzzing
+            # setup accepts from elsewhere.
+            if case_id != Path(case_id).name or case_id in {"", ".", ".."}:
+                raise ValueError(f"case id is not a plain filename: {case_id!r}")
             if case_id in seen_ids:
                 raise ValueError(f"duplicate case id: {case_id}")
             seen_ids.add(case_id)
@@ -82,7 +88,10 @@ def main() -> int:
     parser.add_argument("--corpus", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-    count, digest = build(args.corpus.resolve(), args.output.resolve())
+    # The output path is passed unresolved: `Path.resolve()` follows a final
+    # symlink, so resolving here would hand `build` the link's target and the
+    # symlink check inside would never see the link.
+    count, digest = build(args.corpus.resolve(), args.output)
     print(f"fuzz seed corpus: {count} seeds; source_sha256={digest}")
     return 0
 
