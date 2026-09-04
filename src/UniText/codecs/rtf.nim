@@ -369,7 +369,15 @@ proc parseRtf*(content: string; limits = DefaultParseLimits): ParseResult =
         if number < 0 or number > content.len - index:
           raise newException(CodecError, "RTF binary payload exceeds the document")
         index += number
-      of "rtf", "ansi", "deff", "fs", "f", "lang", "pard": discard
+      of "pard":
+        # \pard resets the paragraph properties, the style among them. Ignoring
+        # it made every paragraph after a \s1 another heading: nothing else
+        # clears `style`, and `flushParagraph` leaves it alone. Our own output
+        # hid this, because `serializeRtf` writes an explicit \s before each
+        # paragraph.
+        style = 0
+        bullet = false
+      of "rtf", "ansi", "deff", "fs", "f", "lang": discard
       else:
         if word.len > 0: unknownControls.incl(word)
       continue

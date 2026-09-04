@@ -51,3 +51,17 @@ suite "RTF styled subset codec":
     check parsed.document.blocks.len == 1
     check parsed.document.blocks[0].blockText == "Visible é 😀"
     check "hidden" notin parsed.document.blocks[0].blockText
+
+suite "pard resets the paragraph style":
+  test "a paragraph after pard is not another heading":
+    # \pard resets paragraph properties, style among them. Ignoring it made
+    # every later paragraph inherit \s1. Our own output hid it: serializeRtf
+    # writes an explicit \s before each paragraph.
+    const document = "{\\rtf1\\ansi \\s1 Title\\par \\pard Body\\par}"
+    let parsed = parseDocument(document, formatRtf)
+    check parsed.document.blocks[0].kind == blockHeading
+    check parsed.document.blocks[1].kind == blockParagraph
+
+  test "and a style set after it still applies":
+    const document = "{\\rtf1\\ansi \\pard\\s2 Code\\par}"
+    check parseDocument(document, formatRtf).document.blocks[0].kind == blockCode
