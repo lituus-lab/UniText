@@ -72,6 +72,16 @@ def source_paths(root: Path, output: Path | None = None) -> list[Path]:
     return sorted(result, key=lambda item: item.relative_to(root).as_posix())
 
 
+def sha1(path: Path) -> str:
+    """SPDX 2.3 requires a SHA-1 per file, and builds the package verification
+    code from those. SHA-256 is carried beside it, not instead of it."""
+    digest = hashlib.sha1()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(65536), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def sha256(path: Path) -> str:
     digest = hashlib.sha256()
     with path.open("rb") as source:
@@ -108,13 +118,18 @@ def generate(root: Path, name: str, version: str, output: Path) -> dict:
     for path in files:
         relative = path.relative_to(root).as_posix()
         digest = sha256(path)
+        digest1 = sha1(path)
         namespace_digest.update(relative.encode("utf-8") + b"\0" + digest.encode("ascii") + b"\n")
-        verification_values.append(digest)
+        # The verification code is over the SHA-1 digests, per SPDX 2.3.
+        verification_values.append(digest1)
         identifier = file_spdx_id(relative)
         records.append({
             "fileName": "./" + relative,
             "SPDXID": identifier,
-            "checksums": [{"algorithm": "SHA256", "checksumValue": digest}],
+            "checksums": [
+                {"algorithm": "SHA1", "checksumValue": digest1},
+                {"algorithm": "SHA256", "checksumValue": digest},
+            ],
             "licenseConcluded": "NOASSERTION",
             "copyrightText": "NOASSERTION",
         })
@@ -123,6 +138,8 @@ def generate(root: Path, name: str, version: str, output: Path) -> dict:
             "relationshipType": "CONTAINS",
             "relatedSpdxElement": identifier,
         })
+    # Sorted, lowercase, concatenated without separators: the SPDX 2.3
+    # definition, and hexdigest() is already lowercase.
     package_verification = hashlib.sha1(
         "".join(sorted(verification_values)).encode("ascii")
     ).hexdigest()
@@ -189,6 +206,11 @@ def verify(root: Path, sbom_path: Path) -> dict:
         "spdxVersion", "dataLicense", "SPDXID", "name", "documentNamespace",
         "creationInfo", "packages", "files", "relationships",
     }
+    # `null`, a number or a list is valid JSON and not a document. set() on one
+    # raises TypeError, which `main` does not catch -- so the verifier printed a
+    # traceback instead of its own failure message.
+    if not isinstance(document, dict):
+        raise SbomError("SPDX document is not a JSON object")
     if set(document) != required_document_fields:
         raise SbomError("invalid SPDX document fields")
     if (
@@ -200,11 +222,13 @@ def verify(root: Path, sbom_path: Path) -> dict:
     records = document.get("files")
     if not isinstance(records, list) or len(records) > MAX_FILES:
         raise SbomError("invalid SPDX file inventory")
+    # Both digests, so a record that carries the SPDX-required SHA-1 and a
+    # SHA-256 that disagree with it cannot pass.
     actual = {
-        "./" + path.relative_to(root).as_posix(): sha256(path)
+        "./" + path.relative_to(root).as_posix(): (sha1(path), sha256(path))
         for path in source_paths(root, sbom_path)
     }
-    recorded: dict[str, str] = {}
+    recorded: dict[str, tuple[str, str]] = {}
     for record in records:
         if not isinstance(record, dict) or set(record) != {
             "fileName", "SPDXID", "checksums", "licenseConcluded", "copyrightText"
@@ -214,14 +238,18 @@ def verify(root: Path, sbom_path: Path) -> dict:
         checksums = record.get("checksums")
         if not isinstance(name, str) or not isinstance(checksums, list):
             raise SbomError("incomplete SPDX file record")
-        matches = [
-            item.get("checksumValue")
-            for item in checksums
-            if isinstance(item, dict) and item.get("algorithm") == "SHA256"
-        ]
+        def digests(algorithm: str) -> list[str]:
+            return [
+                item.get("checksumValue")
+                for item in checksums
+                if isinstance(item, dict) and item.get("algorithm") == algorithm
+            ]
+
+        ones, twos = digests("SHA1"), digests("SHA256")
         if (
-            len(matches) != 1
-            or len(checksums) != 1
+            len(ones) != 1
+            or len(twos) != 1
+            or len(checksums) != 2
             or name in recorded
             or not name.startswith("./")
             or record.get("SPDXID") != file_spdx_id(name[2:])
@@ -229,7 +257,7 @@ def verify(root: Path, sbom_path: Path) -> dict:
             or record.get("copyrightText") != "NOASSERTION"
         ):
             raise SbomError(f"invalid SPDX checksum record: {name!r}")
-        recorded[name] = matches[0]
+        recorded[name] = (ones[0], twos[0])
     if recorded != actual:
         missing = sorted(actual.keys() - recorded.keys())
         stale = sorted(recorded.keys() - actual.keys())
@@ -260,15 +288,18 @@ def verify(root: Path, sbom_path: Path) -> dict:
         or package.get("copyrightText") != "NOASSERTION"
     ):
         raise SbomError("invalid SPDX package contract")
+    # The SHA-1 digests only: `actual` now carries a pair per file, and SPDX
+    # builds the code from the first of them.
     expected_verification = hashlib.sha1(
-        "".join(sorted(actual.values())).encode("ascii")
+        "".join(sorted(one for one, _ in actual.values())).encode("ascii")
     ).hexdigest()
     if package.get("packageVerificationCode") != {
         "packageVerificationCodeValue": expected_verification
     }:
         raise SbomError("SPDX package verification code mismatch")
     namespace_digest = hashlib.sha256()
-    for name, digest in sorted(actual.items()):
+    for name, (_, digest) in sorted(actual.items()):
+        # The namespace is derived from the SHA-256 digests, as `create` does.
         namespace_digest.update(
             name[2:].encode("utf-8") + b"\0" + digest.encode("ascii") + b"\n"
         )
