@@ -8,6 +8,12 @@
 
 static int failures = 0;
 
+/* check() records and carries on, which is what an assertion about a value
+   wants and the opposite of what an allocation wants: the next line
+   dereferences the pointer. allocated() reports through check() and answers
+   whether it is safe to go on. */
+static int allocated(const void *pointer, const char *message);
+
 static void check(int condition, const char *message) {
   if (condition) {
     printf("ok   %s\n", message);
@@ -15,6 +21,11 @@ static void check(int condition, const char *message) {
     printf("FAIL %s\n", message);
     failures++;
   }
+}
+
+static int allocated(const void *pointer, const char *message) {
+  check(pointer != NULL, message);
+  return pointer != NULL;
 }
 
 int main(void) {
@@ -39,7 +50,7 @@ int main(void) {
   required = unitext_document_to_json(document, NULL, 0);
   check(required > 1, "JSON size query");
   buffer = (char *)malloc(required);
-  check(buffer != NULL, "JSON allocation");
+  if (!allocated(buffer, "JSON allocation")) return 1;
   check(unitext_document_to_json(document, buffer, required) == required,
         "JSON buffer write");
   check(strstr(buffer, "unitext.document") != NULL, "JSON schema");
@@ -51,6 +62,7 @@ int main(void) {
     check(edited != NULL, "immutable text edit");
     required = unitext_document_serialize(edited, UNITEXT_FORMAT_MARKDOWN, NULL, 0);
     buffer = (char *)malloc(required);
+    if (!allocated(buffer, "buffer allocation")) return 1;
     unitext_document_serialize(edited, UNITEXT_FORMAT_MARKDOWN, buffer, required);
     check(strstr(buffer, "# Edited document") != NULL, "edited serialization");
     free(buffer);
@@ -59,6 +71,7 @@ int main(void) {
 
   required = unitext_document_diagnostics_json(document, NULL, 0);
   buffer = (char *)malloc(required);
+  if (!allocated(buffer, "buffer allocation")) return 1;
   check(unitext_document_diagnostics_json(document, buffer, required) == required,
         "diagnostic buffer write");
   check(strcmp(buffer, "[]") == 0, "empty parse diagnostics");
@@ -66,6 +79,7 @@ int main(void) {
 
   required = unitext_document_serialize(document, UNITEXT_FORMAT_ASCIIDOC, NULL, 0);
   buffer = (char *)malloc(required);
+  if (!allocated(buffer, "buffer allocation")) return 1;
   check(unitext_document_serialize(document, UNITEXT_FORMAT_ASCIIDOC, buffer,
                                    required) == required, "AsciiDoc serialization");
   check(strstr(buffer, "= Portable document") != NULL, "AsciiDoc heading");
@@ -74,6 +88,7 @@ int main(void) {
   required = unitext_document_serialize_report(
       document, UNITEXT_FORMAT_RTF, NULL, 0);
   buffer = (char *)malloc(required);
+  if (!allocated(buffer, "buffer allocation")) return 1;
   check(unitext_document_serialize_report(document, UNITEXT_FORMAT_RTF, buffer,
                                           required) == required,
         "serialization report write");
@@ -86,6 +101,7 @@ int main(void) {
                                     UNITEXT_FORMAT_MARKDOWN, UNITEXT_FORMAT_RTF,
                                     NULL, 0);
   buffer = (char *)malloc(required);
+  if (!allocated(buffer, "buffer allocation")) return 1;
   check(unitext_convert_report(markdown, strlen(markdown),
                                UNITEXT_FORMAT_MARKDOWN, UNITEXT_FORMAT_RTF,
                                buffer, required) == required,
