@@ -199,10 +199,14 @@ task testCiRelease, "Nim tests CI runs, release — narrow this in a clone whose
   exec "nim c -r -d:release --path:src -o:build/test_version_rel tests/test_version.nim"
   done "testCiRelease"
 
-task testAll, "debug + release + C ABI":
+task testAll, "debug + release + C ABI + the fuzz smoke corpus":
   exec gate("test")
   exec gate("testRelease")
   exec gate("ctest")
+  # A .github/workflows/fuzz.yml used to run this and did not survive the
+  # rebuild, so fuzzSmoke has been defined and unreachable since: the corpus
+  # exists, nothing walks it. Four seconds for 5000 deterministic mutations.
+  exec gate("fuzzSmoke")
   done "testAll"
 
 task example, "Nim demo":
